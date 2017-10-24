@@ -17,6 +17,52 @@ int conn;
 void thread_task() {
 }
 
+void checkcmd(char* recvbuf,char* sendbuf)
+{
+	int flag;
+	if(recvbuf[0]=='c'&&recvbuf[1]=='r'&&recvbuf[2]=='e'&&recvbuf[3]=='a'&&recvbuf[4]=='t'&&recvbuf[5]=='e'&&recvbuf[6]==' ')
+		flag=1;
+	if(!strcmp(recvbuf,"help\n")||strcmp(recvbuf,"create\n")>=0)
+	{
+		if(!strcmp(recvbuf,"help\n"))
+		{
+			char buffer[]="[*] create <filename>\n[*] date\n";
+			memcpy(sendbuf,buffer,sizeof(buffer));
+			return;
+		}
+		if(!strcmp(recvbuf,"create\n"))
+		{
+			char buffer[]="[-] createfileusage:create <filename>\n";
+			memcpy(sendbuf,buffer,sizeof(buffer));
+			return;
+		}
+		if(strlen(recvbuf)>8&&flag)
+		{
+			char *filename=&recvbuf[7];
+			char op[64]="mkdir ";
+			strcat(op,filename);
+			if(!system(op))
+			{
+				char buffer[]="[+] create file successfully\n";
+				memcpy(sendbuf,buffer,sizeof(buffer));
+				return;
+			}
+			else
+			{
+				char buffer[]="[-] Sorry, create file failed\n";
+				memcpy(sendbuf,buffer,sizeof(buffer));
+				return;
+			}
+
+		}
+		memcpy(sendbuf,recvbuf,sizeof(recvbuf));
+	}
+	else
+	{
+		memcpy(sendbuf,recvbuf,sizeof(recvbuf));
+		return;
+	}
+}
 int main() {
     //printf("%d\n",AF_INET);
     //printf("%d\n",SOCK_STREAM);
@@ -50,13 +96,15 @@ int main() {
     //std::thread t(thread_task);
     //t.join();
     char sendbuf[1024];
+    int flag=0;
     //主线程
     while(1) {
 
         memset(recvbuf, 0 ,sizeof(recvbuf));
         int len = recv(conn, recvbuf, sizeof(recvbuf), 0);
         if(strcmp(recvbuf, "exit\n") == 0) break;
-        printf("%s", recvbuf);
+	if(recvbuf[0]=='c'&&recvbuf[1]=='r'&&recvbuf[2]=='e'&&recvbuf[3]=='a'&&recvbuf[4]=='t'&&recvbuf[5]=='e'&&recvbuf[6]==' ')
+		flag=1;
 
 	if(!strcmp(recvbuf,"date\n"))
 	{
@@ -65,15 +113,44 @@ int main() {
 		if(fp==NULL)
 		{
 			printf("ERROR");
-		}
+		}	
 		while(fgets(sendbuf,sizeof(sendbuf)-1,fp)!=NULL);
 		fclose(fp);
 	}
-        //必须要有返回数据， 这样才算一个完整的请求
-	else
+
+	if(!strcmp(recvbuf,"help\n"))
+	{
+		char buffer[]="[*] create <filename>\n[*] date\n";
+		memcpy(sendbuf,buffer,sizeof(buffer));	
+	}
+	if(!strcmp(recvbuf,"create\n"))
+	{
+		char buffer[]="[-] createfileusage:create <filename>\n";
+		memcpy(sendbuf,buffer,sizeof(buffer));
+	}
+	if(strlen(recvbuf)>8&&flag)
+	{
+		char *filename=&recvbuf[7];
+		char op[64]="mkdir ";
+		strcat(op,filename);
+		if(!system(op))
+		{
+			char buffer[]="[+] create file successfully\n";
+			memcpy(sendbuf,buffer,sizeof(buffer));
+		}
+		else
+		{
+			char buffer[]="[-] Sorry, create file failed\n";
+			memcpy(sendbuf,buffer,sizeof(buffer));
+		}
+
+	}
+	if(strcmp(recvbuf,"date\n")&&strcmp(recvbuf,"help\n")&&!flag&&strcmp(recvbuf,"create\n"))
 	{
 		memcpy(sendbuf,recvbuf,sizeof(recvbuf));
 	}
+
+	//checkcmd(recvbuf,sendbuf);
 	send(conn,sendbuf,sizeof(sendbuf),0);
 	//memset(sendbuf,0,sizeof(sendbuf));
 	//if(fgets(sendbuf,sizeof(sendbuf),stdin)!=NULL)
